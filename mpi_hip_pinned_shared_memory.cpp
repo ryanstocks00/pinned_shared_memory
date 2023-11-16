@@ -25,6 +25,7 @@ int main (int argc, char *argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  HIPAssert(hipSetDevice(rank));
 
   void* data;
   MPI_Win win;
@@ -34,7 +35,15 @@ int main (int argc, char *argv[]) {
   int disp_unit;
   MPI_Win_shared_query(win, 0, &win_size, &disp_unit, &data);
 
+#ifdef PIN_ALL_RANKS
+  std::cout << "Rank " << rank << " pinning " << win_size << " bytes of shared memory" << std::endl;
   HIPAssert(hipHostRegister(data, win_size, hipHostRegisterPortable));
+#else
+  if(rank == 0) {
+    std::cout << "Rank " << rank << " pinning " << win_size << " bytes of shared memory" << std::endl;
+    HIPAssert(hipHostRegister(data, win_size, hipHostRegisterPortable));
+  }
+#endif
 
   void* dev_ptr;
   HIPAssert(hipMalloc(&dev_ptr, win_size));
